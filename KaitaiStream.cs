@@ -1050,6 +1050,63 @@ namespace Kaitai
             }
         }
 
+        public byte[] UnprocessZlib(byte[] data)
+        {
+            // See RFC 1950 (https://tools.ietf.org/html/rfc1950)
+            byte zlibCmf =
+                0x08 << 0 | // CM: 8 for DEFLATE
+                0x07 << 4;  // CINFO: logarithm of window size, minus 8. The source for
+                            // `DeflateStream` defines the default number of window bits at 15,
+                            // which is 7 + 8.
+                            // (see https://github.com/dotnet/runtime/blob/9dad1103b5c98a380280ee82182092153c1faa67/src/libraries/Common/src/System/IO/Compression/ZLibNative.cs#L122)
+
+            byte zlibFlg =
+                0x1A << 0 | // FCHECK: rounds CMF and FLG interpreted as a big-endian 16-bit
+                            // unsigned int up to the nearest multiple of 31
+                0x00 << 5 | // FDICT: no preset dictionary needed
+                0x03 << 6;  // FLEVEL: optimal compression
+
+            // Adler-32 checksum
+            ushort s1 = 1;
+            ushort s2 = 0;
+            const ushort limit = 65521;
+            foreach (byte b in data)
+            {
+                s1 = (ushort)((s1 + b) % limit);
+                s2 = (ushort)((s2 + s1) % limit);
+            }
+
+            byte[] s1Bytes = BitConverter.GetBytes(s1);
+            byte[] s2Bytes = BitConverter.GetBytes(s2);
+            if (IsLittleEndian)
+            {
+                s1Bytes.Reverse();
+                s2Bytes.Reverse();
+            }
+
+            using (MemoryStream ms = new MemoryStream(data))
+            {
+                using (DeflateStream ds = new DeflateStream(ms, CompressionLevel.Optimal))
+                {
+                    using (MemoryStream target = new MemoryStream())
+                    {
+                        // Header
+                        target.WriteByte(zlibCmf);
+                        target.WriteByte(zlibFlg);
+
+                        // Compressed data
+                        ds.CopyTo(target);
+
+                        // Footer
+                        target.Write(s2Bytes, 0, 2);
+                        target.Write(s1Bytes, 0, 2);
+
+                        return target.ToArray();
+                    }
+                }
+            }
+        }
+
         #endregion
 
         #region Misc utility methods
