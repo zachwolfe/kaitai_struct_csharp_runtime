@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Globalization;
+using System.Text;
 
 namespace Kaitai
 {
@@ -17,22 +18,24 @@ namespace Kaitai
 
         public KaitaiStream(Stream stream) : base(stream)
         {
+            Writer = new BinaryWriter(stream, Encoding.UTF8, true);
         }
 
         ///<summary>
         /// Creates a KaitaiStream backed by a file (RO)
         ///</summary>
-        public KaitaiStream(string file) : base(File.Open(file, FileMode.Open, FileAccess.Read, FileShare.Read))
+        public KaitaiStream(string file) : this(File.Open(file, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
         }
 
         ///<summary>
         ///Creates a KaitaiStream backed by a byte buffer
         ///</summary>
-        public KaitaiStream(byte[] bytes) : base(new MemoryStream(bytes))
+        public KaitaiStream(byte[] bytes) : this(new MemoryStream(bytes))
         {
         }
 
+        private BinaryWriter Writer;
         private int BitsLeft = 0;
         private ulong Bits = 0;
 
@@ -713,6 +716,17 @@ namespace Kaitai
 
             elements.Reverse();
             return string.Concat(elements);
+        }
+
+        #endregion
+
+        #region Disposal
+
+        override protected void Dispose(bool disposing)
+        {
+            if (disposing) Writer.Dispose();
+
+            base.Dispose(disposing);
         }
 
         #endregion
