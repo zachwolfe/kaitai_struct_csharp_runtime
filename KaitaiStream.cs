@@ -38,6 +38,12 @@ namespace Kaitai
         private BinaryWriter Writer;
         private int BitsLeft = 0;
         private ulong Bits = 0;
+        private bool BitsLe = false;
+        private bool BitsWriteMode = false;
+
+        private WriteBackHandler? WBHandler = null;
+
+        private List<KaitaiStream> ChildStreams = new List<KaitaiStream>();
 
         static readonly bool IsLittleEndian = BitConverter.IsLittleEndian;
 
@@ -50,7 +56,7 @@ namespace Kaitai
         /// </summary>
         public bool IsEof
         {
-            get { return BaseStream.Position >= BaseStream.Length && BitsLeft == 0; }
+            get { return BaseStream.Position >= BaseStream.Length && (BitsWriteMode || BitsLeft == 0); }
         }
 
         /// <summary>
@@ -59,6 +65,14 @@ namespace Kaitai
         /// <param name="position">The position to seek to</param>
         public void Seek(long position)
         {
+            if (BitsWriteMode)
+            {
+                WriteAlignToByte();
+            }
+            else
+            {
+                AlignToByte();
+            }
             BaseStream.Seek(position, SeekOrigin.Begin);
         }
 
@@ -67,7 +81,7 @@ namespace Kaitai
         /// </summary>
         public long Pos
         {
-            get { return BaseStream.Position; }
+            get { return BaseStream.Position + ((BitsWriteMode && BitsLeft > 0) ? 1 : 0); }
         }
 
         /// <summary>
@@ -79,6 +93,8 @@ namespace Kaitai
         }
 
         #endregion
+
+        #region Reading
 
         #region Integer types
 
@@ -298,6 +314,8 @@ namespace Kaitai
         /// <returns></returns>
         public ulong ReadBitsIntBe(int n)
         {
+            BitsWriteMode = false;
+
             ulong res = 0;
 
             int bitsNeeded = n - BitsLeft;
@@ -316,7 +334,7 @@ namespace Kaitai
                 }
 
                 ulong newBits = res;
-                res = res >> BitsLeft | Bits << bitsNeeded;
+                res = res >> BitsLeft | (bitsNeeded < 64 ? Bits << bitsNeeded : 0);
                 Bits = newBits; // will be masked at the end of the function
             }
             else
@@ -342,6 +360,8 @@ namespace Kaitai
         /// <returns></returns>
         public ulong ReadBitsIntLe(int n)
         {
+            BitsWriteMode = false;
+
             ulong res = 0;
             int bitsNeeded = n - BitsLeft;
 
@@ -539,6 +559,396 @@ namespace Kaitai
 
         #endregion
 
+        #endregion
+
+        #region Writing
+
+        #region Integer types
+
+        #region Signed
+
+        /// <summary>
+        /// Write a signed byte to the stream
+        /// </summary>
+        public void WriteS1(sbyte v)
+        {
+            WriteAlignToByte();
+            Writer.Write(v);
+        }
+
+        #region Big-endian
+
+        /// <summary>
+        /// Write a signed short to the stream (big endian)
+        /// </summary>
+        public void WriteS2be(short v)
+        {
+            WriteBytesNormalisedBigEndian(BitConverter.GetBytes(v));
+        }
+
+        /// <summary>
+        /// Write a signed int to the stream (big endian)
+        /// </summary>
+        public void WriteS4be(int v)
+        {
+            WriteBytesNormalisedBigEndian(BitConverter.GetBytes(v));
+        }
+
+        /// <summary>
+        /// Write a signed long to the stream (big endian)
+        /// </summary>
+        public void WriteS8be(long v)
+        {
+            WriteBytesNormalisedBigEndian(BitConverter.GetBytes(v));
+        }
+
+        #endregion
+
+        #region Little-endian
+
+        /// <summary>
+        /// Write a signed short to the stream (little endian)
+        /// </summary>
+        public void WriteS2le(short v)
+        {
+            WriteBytesNormalisedLittleEndian(BitConverter.GetBytes(v));
+        }
+
+        /// <summary>
+        /// Write a signed int to the stream (little endian)
+        /// </summary>
+        public void WriteS4le(int v)
+        {
+            WriteBytesNormalisedLittleEndian(BitConverter.GetBytes(v));
+        }
+
+        /// <summary>
+        /// Write a signed long to the stream (little endian)
+        /// </summary>
+        public void WriteS8le(long v)
+        {
+            WriteBytesNormalisedLittleEndian(BitConverter.GetBytes(v));
+        }
+
+        #endregion
+
+        #endregion
+
+        #region Unsigned
+
+        /// <summary>
+        /// Write an unsigned byte to the stream
+        /// </summary>
+        public void WriteU1(byte v)
+        {
+            WriteAlignToByte();
+            Writer.Write(v);
+        }
+
+        #region Big-endian
+
+        /// <summary>
+        /// Write an unsigned short to the stream (big endian)
+        /// </summary>
+        public void WriteU2be(ushort v)
+        {
+            WriteBytesNormalisedBigEndian(BitConverter.GetBytes(v));
+        }
+
+        /// <summary>
+        /// Write an unsigned int to the stream (big endian)
+        /// </summary>
+        public void WriteU4be(uint v)
+        {
+            WriteBytesNormalisedBigEndian(BitConverter.GetBytes(v));
+        }
+
+        /// <summary>
+        /// Write an unsigned long to the stream (big endian)
+        /// </summary>
+        public void WriteU8be(ulong v)
+        {
+            WriteBytesNormalisedBigEndian(BitConverter.GetBytes(v));
+        }
+
+        #endregion
+
+        #region Little-endian
+
+        /// <summary>
+        /// Write an unsigned short to the stream (little endian)
+        /// </summary>
+        public void WriteU2le(ushort v)
+        {
+            WriteBytesNormalisedLittleEndian(BitConverter.GetBytes(v));
+        }
+
+        /// <summary>
+        /// Write an unsigned int to the stream (little endian)
+        /// </summary>
+        public void WriteU4le(uint v)
+        {
+            WriteBytesNormalisedLittleEndian(BitConverter.GetBytes(v));
+        }
+
+        /// <summary>
+        /// Write an unsigned long to the stream (little endian)
+        /// </summary>
+        public void WriteU8le(ulong v)
+        {
+            WriteBytesNormalisedLittleEndian(BitConverter.GetBytes(v));
+        }
+
+        #endregion
+
+        #endregion
+
+        #endregion
+
+        #region Floating point types
+
+        #region Big-endian
+
+        /// <summary>
+        /// Write a single-precision floating point value to the stream (big endian)
+        /// </summary>
+        public void WriteF4be(float v)
+        {
+            WriteBytesNormalisedBigEndian(BitConverter.GetBytes(v));
+        }
+
+        /// <summary>
+        /// Write a double-precision floating point value to the stream (big endian)
+        /// </summary>
+        public void WriteF8be(double v)
+        {
+            WriteBytesNormalisedBigEndian(BitConverter.GetBytes(v));
+        }
+
+        #endregion
+
+        #region Little-endian
+
+        /// <summary>
+        /// Write a single-precision floating point value to the stream (little endian)
+        /// </summary>
+        public void WriteF4le(float v)
+        {
+            WriteBytesNormalisedLittleEndian(BitConverter.GetBytes(v));
+        }
+
+        /// <summary>
+        /// Write a double-precision floating point value to the stream (little endian)
+        /// </summary>
+        public void WriteF8le(double v)
+        {
+            WriteBytesNormalisedLittleEndian(BitConverter.GetBytes(v));
+        }
+
+        #endregion
+
+        #endregion
+
+        #region Unaligned bit values
+
+        public void WriteAlignToByte()
+        {
+            if (BitsLeft > 0)
+            {
+                byte b = (byte)Bits;
+                if (!BitsLe)
+                {
+                    b <<= 8 - BitsLeft;
+                }
+                Writer.Write(b);
+                AlignToByte();
+            }
+        }
+
+        /*
+            Example 1 (bytesToWrite > 0):
+        
+            old bitsLeft = 5
+                | |          new bitsLeft = 18 mod 8 = 2
+               /   \             /\
+              |01101xxx|xxxxxxxx|xx......|
+               \    \             /
+                \    \__ n = 13 _/
+                 \              /
+                  \____________/
+                 bitsToWrite = 18  ->  bytesToWrite = 2
+
+            ---
+
+            Example 2 (bytesToWrite == 0):
+
+               old bitsLeft = 1
+                    |   |
+                     \ /
+            |01101100|1xxxxx..|........|
+                     / \___/\
+                    /  n = 5 \
+                   /__________\
+                 bitsToWrite = 6  ->  bytesToWrite = 0,
+                                      new bitsLeft = 6 mod 8 = 6
+         */
+        public void WriteBitsIntBe(int n, ulong val) {
+            BitsLe = false;
+            BitsWriteMode = true;
+
+            if (n < 64) {
+                ulong mask = (1UL << n) - 1;
+                val &= mask;
+            }
+            // if `n == 64`, do nothing
+
+            int bitsToWrite = BitsLeft + n;
+            int bytesToWrite = bitsToWrite / 8;
+
+            BitsLeft = bitsToWrite & 7; // `bitsToWrite mod 8`
+
+            if (bytesToWrite > 0) {
+                byte[] buf = new byte[bytesToWrite];
+
+                ulong mask = (1UL << BitsLeft) - 1; // `bitsLeft` is in range 0..7, so `(1L << 64)` does not have to be considered
+                ulong newBits = val & mask;
+                val = val >> BitsLeft | (n - BitsLeft < 64 ? Bits << (n - BitsLeft) : 0);
+                Bits = newBits;
+
+                for (int i = bytesToWrite - 1; i >= 0; i--) {
+                    buf[i] = (byte) (val & 0xff);
+                    val >>= 8;
+                }
+                WriteBytesNotAligned(buf);
+            } else {
+                Bits = Bits << n | val;
+            }
+        }
+
+        /*
+            Example 1 (bytesToWrite > 0):
+
+            n = 13
+
+               old bitsLeft = 5
+                   | |             new bitsLeft = 18 mod 8 = 2
+                  /   \                /\
+              |xxx01101|xxxxxxxx|......xx|
+               \               /      / /
+                ---------------       --
+                          \           /
+                         bitsToWrite = 18  ->  bytesToWrite = 2
+
+            ---
+
+            Example 2 (bytesToWrite == 0):
+
+                      old bitsLeft = 1
+                           |   |
+                            \ /
+            |01101100|..xxxxx1|........|
+                       /\___/ \
+                      / n = 5  \
+                     /__________\
+                   bitsToWrite = 6  ->  bytesToWrite = 0,
+                                        new bitsLeft = 6 mod 8 = 6
+         */
+        public void WriteBitsIntLe(int n, ulong val) {
+            BitsLe = true;
+            BitsWriteMode = true;
+
+            int bitsToWrite = BitsLeft + n;
+            int bytesToWrite = bitsToWrite / 8;
+
+            int oldBitsLeft = BitsLeft;
+            BitsLeft = bitsToWrite & 7; // `bitsToWrite mod 8`
+
+            if (bytesToWrite > 0) {
+                byte[] buf = new byte[bytesToWrite];
+
+                ulong newBits = n - BitsLeft < 64 ? val >> (n - BitsLeft) : 0;
+                val = val << oldBitsLeft | Bits;
+                Bits = newBits;
+
+                for (int i = 0; i < bytesToWrite; i++) {
+                    buf[i] = (byte) (val & 0xff);
+                    val >>= 8;
+                }
+                WriteBytesNotAligned(buf);
+            } else {
+                Bits |= val << oldBitsLeft;
+            }
+
+            ulong mask = (1UL << BitsLeft) - 1; // `bitsLeft` is in range 0..7, so `(1L << 64)` does not have to be considered
+            Bits &= mask;
+        }
+
+        #endregion
+
+        #region Byte arrays
+
+        /// <summary>
+        /// Write an array of bytes to the stream
+        /// </summary>
+        /// <param name="bytes">The bytes to be written</param>
+        public void WriteBytes(byte[] bytes)
+        {
+            WriteAlignToByte();
+            WriteBytesNotAligned(bytes);
+        }
+
+        private void WriteBytesNotAligned(byte[] bytes)
+        {
+            Writer.Write(bytes);
+        }
+
+        /// <summary>
+        /// Convert bytes in the endianess of the current platform to little endian, then write them to the stream
+        /// </summary>
+        /// <param name="bytes">The bytes to be written</param>
+        protected void WriteBytesNormalisedLittleEndian(byte[] bytes)
+        {
+            if (!IsLittleEndian) Array.Reverse(bytes);
+            WriteBytes(bytes);
+        }
+
+        /// <summary>
+        /// Convert bytes in the endianess of the current platform to big endian, then write them to the stream
+        /// </summary>
+        /// <param name="bytes">The bytes to be written</param>
+        protected void WriteBytesNormalisedBigEndian(byte[] bytes)
+        {
+            if (IsLittleEndian) Array.Reverse(bytes);
+            WriteBytes(bytes);
+        }
+
+        public void WriteBytesLimit(byte[] bytes, long size, byte term, byte padByte)
+        {
+            WriteAlignToByte();
+            int len = bytes.Length;
+            Writer.Write(bytes);
+            if (bytes.Length < size)
+            {
+                Writer.Write(term);
+                long padLen = size - len - 1;
+                for (long i = 0; i < padLen; i++)
+                    Writer.Write(padByte);
+            }
+            else if (len > size)
+            {
+                throw new ArgumentException("writing" + size + "bytes, but " + len + " bytes were given");
+            }
+        }
+
+        public void WriteStream(KaitaiStream other)
+        {
+            WriteBytes(other.ToByteArray());
+        }
+
+        #endregion
+
+        #endregion
+
         #region Byte array processing
 
         /// <summary>
@@ -644,6 +1054,15 @@ namespace Kaitai
 
         #region Misc utility methods
 
+        public byte[] ToByteArray()
+        {
+            long pos = Pos;
+            Seek(0);
+            byte[] r = ReadBytesFull();
+            Seek(pos);
+            return r;
+        }
+
         /// <summary>
         /// Performs modulo operation between two integers.
         /// </summary>
@@ -725,15 +1144,75 @@ namespace Kaitai
             return string.Concat(elements);
         }
 
+        public struct WriteBackHandler
+        {
+            private readonly long Pos;
+            private readonly Action<KaitaiStream> Write;
+
+            public WriteBackHandler(long pos, Action<KaitaiStream> write)
+            {
+                Pos = pos;
+                Write = write;
+            }
+
+            public void WriteBack(KaitaiStream parent)
+            {
+                parent.Seek(Pos);
+                Write(parent);
+            }
+        }
+
+        public void SetWriteBackHandler(WriteBackHandler? wbHandler)
+        {
+            WBHandler = wbHandler;
+        }
+
+        public void AddChildStream(KaitaiStream child)
+        {
+            ChildStreams.Add(child);
+        }
+
+        public void WriteBackChildStreams()
+        {
+            WriteBackChildStreams(null);
+        }
+
+        private void WriteBackChildStreams(KaitaiStream parent)
+        {
+            long pos = Pos;
+            foreach (KaitaiStream child in ChildStreams)
+            {
+                child.WriteBackChildStreams(this);
+            }
+            ChildStreams.Clear();
+            Seek(pos);
+            if (parent != null)
+            {
+                WriteBack(parent);
+            }
+        }
+
+        private void WriteBack(KaitaiStream parent)
+        {
+            WBHandler.Value.WriteBack(parent);
+        }
+
         #endregion
 
         #region Disposal
 
         override protected void Dispose(bool disposing)
         {
-            if (disposing) Writer.Dispose();
+            try
+            {
+                if (BitsWriteMode) WriteAlignToByte();
+            }
+            finally
+            {
+                if (disposing) Writer.Dispose();
 
-            base.Dispose(disposing);
+                base.Dispose(disposing);
+            }
         }
 
         #endregion
