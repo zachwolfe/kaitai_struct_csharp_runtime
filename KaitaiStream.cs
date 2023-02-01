@@ -90,6 +90,7 @@ namespace Kaitai
         /// <returns></returns>
         public sbyte ReadS1()
         {
+            AlignToByte();
             return ReadSByte();
         }
 
@@ -165,6 +166,7 @@ namespace Kaitai
         /// <returns></returns>
         public byte ReadU1()
         {
+            AlignToByte();
             return ReadByte();
         }
 
@@ -307,7 +309,7 @@ namespace Kaitai
                 // 8 bits => 1 byte
                 // 9 bits => 2 bytes
                 int bytesNeeded = ((bitsNeeded - 1) / 8) + 1; // `ceil(bitsNeeded / 8)`
-                byte[] buf = ReadBytes(bytesNeeded);
+                byte[] buf = ReadBytesNotAligned(bytesNeeded);
                 for (int i = 0; i < bytesNeeded; i++)
                 {
                     res = res << 8 | buf[i];
@@ -349,7 +351,7 @@ namespace Kaitai
                 // 8 bits => 1 byte
                 // 9 bits => 2 bytes
                 int bytesNeeded = ((bitsNeeded - 1) / 8) + 1; // `ceil(bitsNeeded / 8)`
-                byte[] buf = ReadBytes(bytesNeeded);
+                byte[] buf = ReadBytesNotAligned(bytesNeeded);
                 for (int i = 0; i < bytesNeeded; i++)
                 {
                     res |= ((ulong)buf[i]) << (i * 8);
@@ -393,10 +395,8 @@ namespace Kaitai
         {
             if (count < 0 || count > Int32.MaxValue)
                 throw new ArgumentOutOfRangeException("requested " + count + " bytes, while only non-negative int32 amount of bytes possible");
-            byte[] bytes = base.ReadBytes((int) count);
-            if (bytes.Length < count)
-                throw new EndOfStreamException("requested " + count + " bytes, but got only " + bytes.Length + " bytes");
-            return bytes;
+            AlignToByte();
+            return ReadBytesNotAligned((int)count);
         }
 
         /// <summary>
@@ -408,7 +408,13 @@ namespace Kaitai
         {
             if (count > Int32.MaxValue)
                 throw new ArgumentOutOfRangeException("requested " + count + " bytes, while only non-negative int32 amount of bytes possible");
-            byte[] bytes = base.ReadBytes((int)count);
+            AlignToByte();
+            return ReadBytesNotAligned((int)count);
+        }
+
+        private byte[] ReadBytesNotAligned(int count)
+        {
+            byte[] bytes = base.ReadBytes(count);
             if (bytes.Length < (int)count)
                 throw new EndOfStreamException("requested " + count + " bytes, but got only " + bytes.Length + " bytes");
             return bytes;
@@ -457,6 +463,7 @@ namespace Kaitai
         /// <returns></returns>
         public byte[] ReadBytesTerm(byte terminator, bool includeTerminator, bool consumeTerminator, bool eosError)
         {
+            AlignToByte();
             List<byte> bytes = new List<byte>();
             while (true)
             {
