@@ -220,4 +220,25 @@ namespace Kaitai
 
         protected Object actual;
     }
+
+    public class ConsistencyError : Exception {
+        public readonly string Id;
+        public readonly object Actual;
+        public readonly object Expected;
+
+        public ConsistencyError(string id, object actual, object expected)
+            : base("Check failed: " + id + ", expected: " + expected + ", actual: " + actual)
+        {
+            Id = id;
+            Actual = actual;
+            Expected = expected;
+        }
+    }
+
+    public class ConsistencySizeMismatchError : ConsistencyError {
+        public ConsistencySizeMismatchError(string id, long actual, long expected)
+            : base(id, actual, expected)
+        {
+        }
+    }
 }
