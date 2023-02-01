@@ -21,7 +21,24 @@ namespace Kaitai
         }
     }
 
-    public abstract class ReadWriteKaitaiStruct : KaitaiStruct
+    /// <summary>
+    /// KaitaiStruct object that supports reading from a supplied stream object.
+    /// </summary>
+    public abstract class ReadOnlyKaitaiStruct : KaitaiStruct
+    {
+        public ReadOnlyKaitaiStruct(KaitaiStream io) : base(io)
+        {
+        }
+        public abstract void _read();
+    }
+
+    /// <summary>
+    /// KaitaiStruct object that supports both reading from a given stream
+    /// object, and writing to a pre-supplied stream object or to a stream
+    /// object given explicitly. This also defines a few useful shortcut
+    /// methods.
+    /// </summary>
+    public abstract class ReadWriteKaitaiStruct : ReadOnlyKaitaiStruct
     {
         public ReadWriteKaitaiStruct(KaitaiStream io) : base(io)
         {
