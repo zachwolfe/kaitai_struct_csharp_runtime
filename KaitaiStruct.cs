@@ -21,6 +21,30 @@ namespace Kaitai
         }
     }
 
+    public abstract class ReadWriteKaitaiStruct : KaitaiStruct
+    {
+        public ReadWriteKaitaiStruct(KaitaiStream io) : base(io)
+        {
+        }
+        public abstract void _write_Seq();
+        public abstract void _check();
+        public abstract void _fetchInstances(); // FIXME: perhaps move directly into KaitaiStruct
+
+        public void _write(KaitaiStream io = null)
+        {
+            if (io != null) m_io = io;
+            _write_Seq();
+            _fetchInstances();
+            m_io.WriteBackChildStreams();
+        }
+
+        public void _write_Seq(KaitaiStream io)
+        {
+            m_io = io;
+            _write_Seq();
+        }
+    }
+
     /// <summary>
     /// A custom decoder interface. Implementing classes can be called from
     /// inside a .ksy file using `process: XXX` syntax.
