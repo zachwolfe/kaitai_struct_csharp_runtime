@@ -35,6 +35,13 @@ namespace Kaitai
         {
         }
 
+        ///<summary>
+        ///Creates a KaitaiStream backed by a newly-allocated byte buffer of a given size
+        ///</summary>
+        public KaitaiStream(long size) : this(Enumerable.Repeat<byte>(0, Convert.ToInt32(size)).ToArray())
+        {
+        }
+
         private BinaryWriter Writer;
         private int BitsLeft = 0;
         private ulong Bits = 0;
@@ -1111,8 +1118,53 @@ namespace Kaitai
 
         #region Misc utility methods
 
+        private byte[] GetBackingBuffer()
+        {
+            if (BaseStream is MemoryStream ms)
+            {
+                // Neither TryGetBuffer nor GetBuffer are available on both
+                // .NET Standard 1.3 and .NET Framework 4.5.
+                // Fun.
+#if NETSTANDARD
+                // If the array segment does not refer to the entire array,
+                // then we shouldn't return it.
+                if (ms.TryGetBuffer(out ArraySegment<byte> segment) && segment.Offset == 0 && segment.Count == segment.Array.Length)
+                {
+                    return segment.Array;
+                }
+                else
+                {
+                    return null;
+                }
+#elif NETFRAMEWORK
+                // The user might have passed in their own `MemoryStream`
+                // without a publicly visible buffer to our `Stream`
+                // constructor, so we must catch an exception in that case
+                // See https://learn.microsoft.com/en-us/dotnet/api/system.io.memorystream.getbuffer?view=net-7.0#exceptions
+                try
+                {
+                    return ms.GetBuffer();
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return null;
+                }
+#endif
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         public byte[] ToByteArray()
         {
+            // If this stream was created from a byte array, return it
+            // directly without copying:
+            byte[] backingBuffer = GetBackingBuffer();
+            if (backingBuffer != null)
+                return backingBuffer;
+
             long pos = Pos;
             Seek(0);
             byte[] r = ReadBytesFull();
