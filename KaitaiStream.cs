@@ -18,7 +18,10 @@ namespace Kaitai
 
         public KaitaiStream(Stream stream) : base(stream)
         {
-            Writer = new BinaryWriter(stream, Encoding.UTF8, true);
+            if (stream.CanWrite)
+            {
+                Writer = new BinaryWriter(stream, Encoding.UTF8, true);
+            }
         }
 
         ///<summary>
@@ -1318,7 +1321,7 @@ namespace Kaitai
             }
             finally
             {
-                if (disposing) Writer.Dispose();
+                if (disposing && Writer != null) Writer.Dispose();
 
                 base.Dispose(disposing);
             }
