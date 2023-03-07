@@ -17,25 +17,25 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageId>KaitaiStruct.Runtime.CSharp</PackageId>
+    <PackageId>ZachWolfe.KaitaiStruct.Runtime.CSharp</PackageId>
     <Authors />
     <Company>Kaitai Project</Company>
     <Description>This library implements Kaitai Struct API for C#.</Description>
     <Product>Kaitai Struct Runtime</Product>
     <Copyright>Copyright © Kaitai Project 2016-2022</Copyright>
-    <AssemblyName>Kaitai.Struct.Runtime</AssemblyName>
+    <AssemblyName>ZachWolfe.Kaitai.Struct.Runtime</AssemblyName>
     <RootNamespace>Kaitai</RootNamespace>
     <PackageProjectUrl>http://kaitai.io/</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/kaitai-io/kaitai_struct_csharp_runtime</RepositoryUrl>
+    <RepositoryUrl>https://github.com/zachwolfe/kaitai_struct_csharp_runtime</RepositoryUrl>
     <PackageTags>Kaitai Struct File-Format Binary Protocols</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageIcon>icon.png</PackageIcon>
 
-    <AssemblyVersion>0.10.0.0</AssemblyVersion>
-    <FileVersion>0.10.0.0</FileVersion>
-    <Version>0.10.0.0</Version>
+    <AssemblyVersion>0.11.0.0</AssemblyVersion>
+    <FileVersion>0.11.0.0</FileVersion>
+    <Version>0.11.0.0</Version>
 
-    <PackageReleaseNotes>Update to version 0.10</PackageReleaseNotes>
+    <PackageReleaseNotes>Update to version 0.11</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
